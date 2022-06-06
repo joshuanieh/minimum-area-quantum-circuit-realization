@@ -3,8 +3,9 @@ from itertools import product
 import collections
 import math
 from qiskit.circuit.library import MCXGate
+from qiskit import QuantumCircuit
 
-#step 1 2
+#step 1 2: Construct original truth table plus the preservation bits
 clasical_boolean_logic = []
 inputs = ''
 print("Please enter your clasical boolean logics, q to return: (ex, s (output) = ab' + a'b (input))")
@@ -68,7 +69,7 @@ current_truth_table = pd.DataFrame(values,columns=(input_variable_list + [" "] +
 print("\nClassical truth table:")
 print(current_truth_table.to_string(index=False))
 
-#step 3
+#step 3: Eliminate duplicate output
 output_values = [tuple([int(x[input_variable_list.index(variable)]) for variable in p] + [int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string]) for x in product([False, True], repeat=len(input_variable_list))]
 item_count_dictionary = dict([(item, count) for item, count in collections.Counter(output_values).items() if count > 1])
 z = max([count for item, count in collections.Counter(output_values).items()])
@@ -104,9 +105,12 @@ new_output_values = [[] for i in range(len(values))]
 if d != []:
 	for i in range(len(values)):
 		new_output_values[i] = list(output_values[i]) + d[i]
+else:
+	for i in range(len(values)):
+		new_output_values[i] = list(output_values[i])
+# print("n: ", new_output_values)
 
-
-#step 4
+#step 4: Pad some bits in ouput or input to t and construct the whole transformation table
 input_values = [[int(k) for k in decimal_to_binary_string(i, t)] for i in range(2**t)]
 l = len(input_variable_list)
 for i in range(t - l):
@@ -114,12 +118,13 @@ for i in range(t - l):
 # print(input_values)
 output_values = new_output_values[:]
 output_values = [new_output_values[i] + [0 for j in range(t - len(output_variable_list))] for i in range(len(new_output_values))]
-# print(new_output_values)
+# print(output_values)
 
 # print(input_variable_list)
 
 output_slots = [0 for i in range(2**t)]
 for i in output_values:
+	# print(i)
 	output_slots[int("".join([f'{j}' for j in i]), 2)] = 1
 # print(output_slots)
 # print(output_values)
@@ -136,10 +141,10 @@ while len(output_values) < 2**t:
 values = [input_values[i] + [" "] + [" "] + output_values[i] for i in range(2**t)]
 # print(values)
 current_truth_table = pd.DataFrame(values,columns=(input_variable_list + [" "] + [" "] + output_variable_list))
-print("\nTransform table:")
+print("\nTransformation table:")
 print(current_truth_table.to_string(index=False))
 
-#step 5
+#step 5: Permutation and cycle
 permutation = dict([(int("".join([f'{j}' for j in input_values[i]]), 2), int("".join([f'{j}' for j in output_values[i]]), 2)) for i in range(2**t)])
 print(permutation)
 cycles = []
@@ -152,36 +157,64 @@ for i in range(2**t):
 		k = permutation.pop(k)
 	if len(l) >= 2:
 		cycles.append(l)
-print(cycles)
-
-#step 6
 new_cycles = []
-power_list = [2**k for k in range(t)]
 for cycle in cycles:
 	new_cycle = []
-	for j, k in enumerate(cycle):
-		if j == len(cycle) -1 or k ^ cycle[j + 1] in power_list:
-			new_cycle += [k]
-			continue
+	for i, j in enumerate(cycle):
+		if i == len(cycle) - 1:
+			break
+		new_cycles.append((j, cycle[i + 1]))
+	# new_cycles.append(new_cycle)
+print(new_cycles)
+
+#step 6: T(S, R, I) gate
+cycles = new_cycles
+new_cycles = []
+print(cycles)
+power_list = [2**k for k in range(t)]
+for cycle in cycles:
+	print(cycle)
+	j = cycle[0]
+	k = cycle[1]
+	if k ^ j in power_list:
+		new_cycles += [(j, k)]
+		continue
+	else:
+		tmp_cycles = []
+		s = decimal_to_binary_string(j, t)
+		s = list(s)
+		diff = decimal_to_binary_string(k ^ j, t)
+		for m, i in enumerate(diff):
+			if i == '1':
+				if s[m] == '0':
+					s[m] = '1'
+				else:
+					s[m] = '0'
+				tmp_cycles += [(j, int("".join(s), 2))]
+				new_cycles += [(j, int("".join(s), 2))]
+				j = int("".join(s), 2)
+		new_cycles += tmp_cycles[-2::-1]
+print(new_cycles)
+
+#step 7: Draw
+circuit = QuantumCircuit(t)
+for cycle in new_cycles[::-1]:
+	n = cycle[0]
+	j = cycle[1]
+	current_state_binary = decimal_to_binary_string(n, t)
+	diff = n ^ j
+	diff_binary = decimal_to_binary_string(diff, t)
+	ctrl_state = ""
+	# print(diff_binary)
+	for k, i in enumerate(diff_binary):
+		if i == '0':
+			ctrl_state += current_state_binary[k]
 		else:
-			s = decimal_to_binary_string(k, t)
-			s = list(s)
-			diff = decimal_to_binary_string(k ^ cycle[j + 1], t)
-			for m, i in enumerate(diff):
-				if i == '1':
-					new_cycle += [int("".join(s), 2)]
-					if s[m] == '0':
-						s[m] = '1'
-					else:
-						s[m] = '0'
-	new_cycles += new_cycle
-# print(new_cycles)
+			X_pos = t - k - 1
+	# print(ctrl_state)
+	gate = MCXGate(t - 1, ctrl_state = ctrl_state)
+	# print([m for m in range(t) if m != X_pos], [X_pos])
+	circuit.append(gate, [m for m in range(t) if m != X_pos] + [X_pos])
 
-#step 7
-gate = MCXGate(4, ctrl_state = '1000')
-
-from qiskit import QuantumCircuit
-circuit = QuantumCircuit(5)
-circuit.append(gate, [0, 1, 2, 4, 3])
 circuit.draw(output='mpl',filename='circuit.png')
 print(circuit)
