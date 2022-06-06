@@ -4,7 +4,7 @@ import collections
 import math
 from qiskit.circuit.library import MCXGate
 from qiskit import QuantumCircuit
-
+from qiskit.circuit import QuantumRegister, ClassicalRegister
 #step 1 2: Construct original truth table plus the preservation bits
 clasical_boolean_logic = []
 inputs = ''
@@ -20,8 +20,9 @@ print("Please enter the variables you want to preserve, press enter if no bits t
 p = input("").split(", ")
 if p == ['']:
 	p = []
-
-output_variable_list = p[:]
+output_variable_list = []
+for i in p:
+	output_variable_list.append(f'o_{i}')
 input_variable_list = []
 function_string = ["" for i in range(len(clasical_boolean_logic))]
 for i, logic in enumerate(clasical_boolean_logic):
@@ -197,7 +198,13 @@ for cycle in cycles:
 print(new_cycles)
 
 #step 7: Draw
-circuit = QuantumCircuit(t)
+input_registers = []
+for i in range(t):
+	input_registers.append(QuantumRegister(1, name=input_variable_list[t - i - 1]))
+output_registers = []
+for i in range(t):
+	output_registers.append(ClassicalRegister(1, name=output_variable_list[t - i - 1]))
+circuit = QuantumCircuit(*input_registers, *output_registers)
 for cycle in new_cycles[::-1]:
 	n = cycle[0]
 	j = cycle[1]
@@ -215,6 +222,7 @@ for cycle in new_cycles[::-1]:
 	gate = MCXGate(t - 1, ctrl_state = ctrl_state)
 	# print([m for m in range(t) if m != X_pos], [X_pos])
 	circuit.append(gate, [m for m in range(t) if m != X_pos] + [X_pos])
-
+for i in range(t):
+	circuit.measure(input_registers[i], output_registers[i])
 circuit.draw(output='mpl',filename='circuit.png')
 print(circuit)
