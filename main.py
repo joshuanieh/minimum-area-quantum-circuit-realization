@@ -21,8 +21,6 @@ p = input("").split(", ")
 if p == ['']:
 	p = []
 output_variable_list = []
-for i in p:
-	output_variable_list.append(f'o_{i}')
 input_variable_list = []
 function_string = ["" for i in range(len(clasical_boolean_logic))]
 for i, logic in enumerate(clasical_boolean_logic):
@@ -58,20 +56,22 @@ for i, logic in enumerate(clasical_boolean_logic):
 		prev = alphabet
 	function_string[i] += ")"
 	# print(function_string[i])
+for i in p:
+	output_variable_list.append(f'o_{i}')
 
 def evaluation(arg, function_string):
 	return eval(function_string)
 
 # print(output_variable_list)
 # print(input_variable_list)
-values = [[int(i) for i in x] + [" "] + [" "] + [int(x[input_variable_list.index(variable)]) for variable in p] + [int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string] for x in product([False, True], repeat=len(input_variable_list))]
+values = [[int(i) for i in x] + [" "] + [" "] + [int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string] + [int(x[input_variable_list.index(variable)]) for variable in p] for x in product([False, True], repeat=len(input_variable_list))]
 # print(values)
 current_truth_table = pd.DataFrame(values,columns=(input_variable_list + [" "] + [" "] + output_variable_list))
 print("\nClassical truth table:")
 print(current_truth_table.to_string(index=False))
 
 #step 3: Eliminate duplicate output
-output_values = [tuple([int(x[input_variable_list.index(variable)]) for variable in p] + [int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string]) for x in product([False, True], repeat=len(input_variable_list))]
+output_values = [tuple([int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string] + [int(x[input_variable_list.index(variable)]) for variable in p]) for x in product([False, True], repeat=len(input_variable_list))]
 item_count_dictionary = dict([(item, count) for item, count in collections.Counter(output_values).items() if count > 1])
 z = max([count for item, count in collections.Counter(output_values).items()])
 z = int(math.ceil(math.log(z, 2)))
@@ -171,10 +171,10 @@ print(new_cycles)
 #step 6: T(S, R, I) gate
 cycles = new_cycles
 new_cycles = []
-print(cycles)
+# print(cycles)
 power_list = [2**k for k in range(t)]
 for cycle in cycles:
-	print(cycle)
+	# print(cycle)
 	j = cycle[0]
 	k = cycle[1]
 	if k ^ j in power_list:
