@@ -16,10 +16,14 @@ while True:
 	if inputs == "":
 		continue
 	clasical_boolean_logic += [inputs]
+print()
+
 print("Please enter the variables you want to preserve, press enter if no bits to be preserved: (ex, a, b)")
-p = input("").split(", ")
+p = input("").split(",")
 if p == ['']:
 	p = []
+for i in range(len(p)):
+	p[i] = p[i].strip()
 output_variable_list = []
 input_variable_list = []
 function_string = ["" for i in range(len(clasical_boolean_logic))]
@@ -28,7 +32,7 @@ for i, logic in enumerate(clasical_boolean_logic):
 	function_string[i] = "("
 	prev = ""
 	outputs, inputs = logic.split("=")
-	output_variable_list += [outputs]
+	output_variable_list += [outputs.strip()]
 	for alphabet in inputs:
 		if alphabet == "(":
 			if prev == ")" or prev.isalpha() or prev == "\'":
@@ -51,22 +55,33 @@ for i, logic in enumerate(clasical_boolean_logic):
 			else:
 				function_string[i] = function_string[i][:-8] + "not " + function_string[i][-8:]
 		else:
-			pass
+			continue
 
 		prev = alphabet
 	function_string[i] += ")"
-	# print(function_string[i])
 for i in p:
+	assert i in input_variable_list, "Preservation bits should be input variables."
 	output_variable_list.append(f'o_{i}')
+print()
+
+for i, logic in enumerate(function_string):
+	print(f"Logic {i + 1}: {output_variable_list[i]} = {logic}")
+print()
 
 def evaluation(arg, function_string):
 	return eval(function_string)
 
-# print(output_variable_list)
-# print(input_variable_list)
-values = [[int(i) for i in x] + [" "] + [" "] + [int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string] + [int(x[input_variable_list.index(variable)]) for variable in p] for x in product([False, True], repeat=len(input_variable_list))]
+# print("output_variable_list: ", output_variable_list)
+# print("input_variable_list: ", input_variable_list)
+
+values = [[int(i) for i in x] + [" "] + [" "] + [int(evaluation(dict([(input_variable_list[i], x[i]) for i in range(len(input_variable_list))]), func)) for func in function_string] for x in product([False, True], repeat=len(input_variable_list))]
 # print(values)
-current_truth_table = pd.DataFrame(values,columns=(input_variable_list + [" "] + [" "] + output_variable_list))
+
+if len(p):
+	current_truth_table = pd.DataFrame(values,columns=(input_variable_list + [" "] + [" "] + output_variable_list[:-len(p)]))
+
+else:
+	current_truth_table = pd.DataFrame(values,columns=(input_variable_list + [" "] + [" "] + output_variable_list[:]))
 print("\nClassical truth table:")
 print(current_truth_table.to_string(index=False))
 
@@ -147,7 +162,7 @@ print(current_truth_table.to_string(index=False))
 
 #step 5: Permutation and cycle
 permutation = dict([(int("".join([f'{j}' for j in input_values[i]]), 2), int("".join([f'{j}' for j in output_values[i]]), 2)) for i in range(2**t)])
-print(permutation)
+# print(permutation)
 cycles = []
 for i in range(2**t):
 	l = []
@@ -166,7 +181,7 @@ for cycle in cycles:
 			break
 		new_cycles.append((j, cycle[i + 1]))
 	# new_cycles.append(new_cycle)
-print(new_cycles)
+# print(new_cycles)
 
 #step 6: T(S, R, I) gate
 cycles = new_cycles
@@ -195,7 +210,7 @@ for cycle in cycles:
 				new_cycles += [(j, int("".join(s), 2))]
 				j = int("".join(s), 2)
 		new_cycles += tmp_cycles[-2::-1]
-print(new_cycles)
+# print(new_cycles)
 
 #step 7: Draw
 input_registers = []
